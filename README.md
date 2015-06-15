@@ -12,7 +12,7 @@ import (
   "fmt"
 )
 
-func countTrieNodes(trie *triegoTrie, i *int) {
+func countTrieNodes(trie *triego.Trie, i *int) {
 	if len(trie.Children) == 0 {
 		*i = *i + 1
 		return
