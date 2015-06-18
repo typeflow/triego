@@ -57,15 +57,15 @@ func Test_trieFindsWords(t *testing.T) {
 	tr5.IsWord = true
 	tr4.Children['t'] = tr5
 
-	if rootTrie.HasWord([]rune("dog")) == false {
+	if rootTrie.HasWord("dog") == false {
 		t.Errorf("Finding word 'dog' in trie fails")
 	}
 
-	if rootTrie.HasWord([]rune("cat")) == false {
+	if rootTrie.HasWord("cat") == false {
 		t.Errorf("Finding word 'cat' in trie fails")
 	}
 
-	if rootTrie.HasWord([]rune("foo")) == true {
+	if rootTrie.HasWord("foo") == true {
 		t.Errorf("Finding word 'foo' in trie unexpectedly succeeds")
 	}
 
@@ -92,26 +92,32 @@ func countTries(trie *Trie, i *int) {
 	*i = *i + 1
 }
 
+type WordTest struct {
+	w string
+	out bool
+}
+
+var testWords = []WordTest{
+	{"testWord1", true},
+	{"testWord2", true},
+	{"nonExisting", false},
+}
+
 func Test_trieAppendsWords(t *testing.T) {
 	rootTrie := NewTrie()
 
-	const (
-		w1 = "testWord1"
-		w2 = "testWord2"
-	)
-
-	expectedWords := [...]string{w1, w2}
-
-	rootTrie.AppendWord(w1)
-	rootTrie.AppendWord(w2)
-
-	if rootTrie.HasWord([]rune(w1)) == false {
-		t.Errorf("Finding word '%s' in trie fails", w1)
+	for _, v := range testWords {
+		if v.out == true {
+			rootTrie.AppendWord(v.w)
+		}
 	}
 
-	if rootTrie.HasWord([]rune(w2)) == false {
-		t.Errorf("Finding word '%s' in trie fails", w2)
+	for _, v := range testWords {
+		if rootTrie.HasWord(v.w) != v.out {
+			t.Errorf("Finding word '%s' in trie fails", v.w)
+		}
 	}
+
 	var i int = 0
 	countTries(rootTrie, &i)
 	if i != 11 {
@@ -121,14 +127,14 @@ func Test_trieAppendsWords(t *testing.T) {
 	words := rootTrie.Words()
 	for _, word := range words {
 		found := false
-		for _, expectedWord := range expectedWords {
-			if word == expectedWord {
+		for _, v := range testWords {
+			if word == v.w && v.out == true {
 				found = true
 			}
 		}
 
 		if !found {
-			t.Fatalf("Cannot find expected words in the list of words in the trie: '%s' not in %v", word, expectedWords)
+			t.Fatalf("Cannot find expected words in the list of words in the trie: '%s'", word)
 		}
 	}
 }
