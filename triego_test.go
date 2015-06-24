@@ -92,12 +92,12 @@ func countTries(trie *Trie, i *int) {
 	*i = *i + 1
 }
 
-type WordTest struct {
+type word_test struct {
 	w string
 	out bool
 }
 
-var testWords = []WordTest{
+var testWords = []word_test{
 	{"testWord1", true},
 	{"testWord2", true},
 	{"nonExisting", false},
@@ -135,6 +135,36 @@ func Test_trieAppendsWords(t *testing.T) {
 
 		if !found {
 			t.Fatalf("Cannot find expected words in the list of words in the trie: '%s'", word)
+		}
+	}
+}
+
+
+type node_count_test struct {
+	words          []string
+    expected_count int
+}
+
+var node_count_tests = []node_count_test{
+    { []string{ "a", "aaa", "bb", "bbb"}, 7},
+    { []string{ "trie", "triego", "git"}, 10},
+}
+
+func Test_iteratesEachNode(t *testing.T) {
+
+	for _, v := range node_count_tests {
+		rootTrie := NewTrie()
+		for _, word := range v.words {
+			rootTrie.AppendWord(word)
+		}
+
+		buffer := make([]rune, 0, 21)
+		rootTrie.EachNode(func(node *TrieNode, halt *bool) {
+			buffer = append(buffer, node.Character())
+		})
+
+		if c := len(buffer); c != v.expected_count {
+			t.Fatalf("Unexpected number of nodes: expected %d, got %d", v.expected_count, c)
 		}
 	}
 }

@@ -14,7 +14,10 @@ type Trie struct {
 	isRoot   bool
 }
 
+type TrieNode Trie
 type TriePtr *Trie
+
+type TrieNodeIteratorCallback func(node *TrieNode, halt *bool) ()
 
 // Initializes a new trie
 func NewTrie() (t *Trie) {
@@ -118,4 +121,31 @@ func (t *Trie) Words() (words []string) {
 	}
 
 	return
+}
+
+func (t *TrieNode) Character() rune {
+	return t.C
+}
+
+func (t *Trie) EachNode(callback TrieNodeIteratorCallback) {
+	// still a DFS-based implementation
+	stack := stackgo.NewStack()
+	node := t
+
+	stack.Push(unsafe.Pointer(node))
+
+	stop := false
+	for stack.Size() > 0 {
+		node = TriePtr(stack.Pop().(unsafe.Pointer))
+
+		callback((*TrieNode)(node), &stop)
+
+		if stop == true {
+			return
+		}
+
+		for _, c := range node.Children {
+			stack.Push(unsafe.Pointer(c))
+		}
+	}
 }
