@@ -26,13 +26,17 @@ func NewTrie() (t *Trie) {
 	t.Parent = nil
 	t.C = 0
 	t.isRoot = true
-	t.Children = make(map[rune](*Trie))
+	t.Children = make(map[rune]*Trie)
 
 	return
 }
 
 // Returns true if this trie is root
 func (t *Trie) IsRoot() bool {
+	return t.isRoot
+}
+
+func (t *TrieNode) IsRoot() bool {
 	return t.isRoot
 }
 
@@ -71,7 +75,7 @@ func (t *Trie) append(suffix []rune, makesWord bool) {
 }
 
 
-// Returns true if the word is present
+// Returns true if the word is found
 // in the trie
 func (t *Trie) HasWord(word string) bool {
 	currentSlice := []rune(word)
@@ -97,26 +101,27 @@ func (t *Trie) Words() (words []string) {
     // DFS-based implementation for returning
 	// all the words in the trie
 	stack := stackgo.NewStack()
-	node := t
 
 	words = make([]string, 0)
 	word  := make([]rune, 0)
 
-	stack.Push(unsafe.Pointer(node))
+	stack.Push(unsafe.Pointer(t))
 	for stack.Size() > 0 {
-		node = TriePtr(stack.Pop().(unsafe.Pointer))
+		node := TriePtr(stack.Pop().(unsafe.Pointer))
 		if !node.isRoot {
 			word = append(word, node.C)
 		}
 
-		if len(node.Children) == 0 {
-			if node.IsWord {
-				words = append(words, string(word))
-			}
-			word = word[:len(word) - 1]
+		if node.IsWord {
+			words = append(words, string(word))
 		}
-		for _, c := range node.Children {
-			stack.Push(unsafe.Pointer(c))
+
+		if len(node.Children) == 0 {
+			word = word[:len(word) - 1]
+		} else {
+			for _, c := range node.Children {
+				stack.Push(unsafe.Pointer(c))
+			}
 		}
 	}
 

@@ -130,6 +130,7 @@ func Test_trieAppendsWords(t *testing.T) {
 		for _, v := range testWords {
 			if word == v.w && v.out == true {
 				found = true
+				break
 			}
 		}
 
@@ -139,6 +140,33 @@ func Test_trieAppendsWords(t *testing.T) {
 	}
 }
 
+func Test_heavyHasWords(t *testing.T) {
+	rootTrie := NewTrie()
+
+	for _, v := range country_names {
+		rootTrie.AppendWord(v)
+		if !rootTrie.HasWord(v) {
+			t.Errorf("Cannot find appended word %s", v)
+		}
+	}
+
+	words := rootTrie.Words()
+	for _, w := range country_names {
+		found := false
+		for _, word := range words {
+			if w == word {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Logf("Cannot find word %s in trie", w)
+			t.Log("Trie is:")
+			t.Log(words)
+			t.FailNow()
+		}
+	}
+}
 
 type node_count_test struct {
 	words          []string
