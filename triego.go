@@ -12,6 +12,7 @@ type Trie struct {
 	C        rune
 	Children map[rune]*Trie
 	isRoot   bool
+	depth    int
 }
 
 type TrieNode Trie
@@ -27,6 +28,7 @@ func NewTrie() (t *Trie) {
 	t.C = 0
 	t.isRoot = true
 	t.Children = make(map[rune]*Trie)
+	t.depth = 0
 
 	return
 }
@@ -66,6 +68,7 @@ func (t *Trie) append(suffix []rune, makesWord bool) {
 	t.Children[suffix[0]] = tc
 	tc.C = suffix[0]
 	tc.isRoot = false
+	tc.depth = t.depth + 1
 
 	if len(suffix) > 1 {
 		tc.append(suffix[1:], makesWord)
@@ -105,10 +108,17 @@ func (t *Trie) Words() (words []string) {
 	words = make([]string, 0)
 	word  := make([]rune, 0)
 
+	last_depth := 0
+
 	stack.Push(unsafe.Pointer(t))
 	for stack.Size() > 0 {
 		node := TriePtr(stack.Pop().(unsafe.Pointer))
+
 		if !node.isRoot {
+			if node.depth <= last_depth {
+				word = word[:len(word) - (last_depth - node.depth + 1)]
+			}
+
 			word = append(word, node.C)
 		}
 
@@ -116,13 +126,10 @@ func (t *Trie) Words() (words []string) {
 			words = append(words, string(word))
 		}
 
-		if len(node.Children) == 0 {
-			word = word[:len(word) - 1]
-		} else {
-			for _, c := range node.Children {
-				stack.Push(unsafe.Pointer(c))
-			}
+		for _, c := range node.Children {
+			stack.Push(unsafe.Pointer(c))
 		}
+		last_depth = node.depth
 	}
 
 	return
