@@ -18,7 +18,7 @@ type Trie struct {
 type TrieNode Trie
 type TriePtr *Trie
 
-type TrieNodeIteratorCallback func(node *TrieNode, halt *bool) ()
+type TrieNodeIteratorCallback func(node *TrieNode, halt *bool)
 
 // Initializes a new trie
 func NewTrie() (t *Trie) {
@@ -42,6 +42,10 @@ func (t *TrieNode) IsRoot() bool {
 	return t.isRoot
 }
 
+func (t *TrieNode) Depth() int {
+	return t.depth
+}
+
 // Appends a word to the trie
 // This is a recursive function, so not that
 // efficient.
@@ -58,7 +62,7 @@ func (t *Trie) append(suffix []rune, makesWord bool) {
 	// holding this character we
 	// move forward and append
 	// the remaining part
-	if c,ok := t.Children[suffix[0]]; ok {
+	if c, ok := t.Children[suffix[0]]; ok {
 		c.append(suffix[1:], makesWord)
 		return
 	}
@@ -77,12 +81,11 @@ func (t *Trie) append(suffix []rune, makesWord bool) {
 	}
 }
 
-
 // Returns true if the word is found
 // in the trie
 func (t *Trie) HasWord(word string) bool {
 	currentSlice := []rune(word)
-	currentRoot  := t
+	currentRoot := t
 
 	for len(currentSlice) > 0 {
 		c, ok := currentRoot.Children[currentSlice[0]]
@@ -92,7 +95,7 @@ func (t *Trie) HasWord(word string) bool {
 			return false
 		}
 		currentSlice = currentSlice[1:]
-		currentRoot  = c
+		currentRoot = c
 	}
 
 	return false
@@ -101,12 +104,12 @@ func (t *Trie) HasWord(word string) bool {
 // Returns a list with all the
 // words present in the trie
 func (t *Trie) Words() (words []string) {
-    // DFS-based implementation for returning
+	// DFS-based implementation for returning
 	// all the words in the trie
 	stack := stackgo.NewStack()
 
 	words = make([]string, 0)
-	word  := make([]rune, 0)
+	word := make([]rune, 0)
 
 	last_depth := 0
 
@@ -116,7 +119,7 @@ func (t *Trie) Words() (words []string) {
 
 		if !node.isRoot {
 			if node.depth <= last_depth {
-				word = word[:len(word) - (last_depth - node.depth + 1)]
+				word = word[:len(word)-(last_depth-node.depth+1)]
 			}
 
 			word = append(word, node.C)
