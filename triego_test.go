@@ -3,6 +3,9 @@ package triego
 import (
 	"testing"
 	/*"fmt"*/
+	"os"
+	"bufio"
+	"io"
 )
 
 func Test_trieFindsWords(t *testing.T) {
@@ -194,6 +197,40 @@ func Test_iteratesEachNode(t *testing.T) {
 		if c := len(buffer); c != v.expected_count {
 			t.Fatalf("Unexpected number of nodes: expected %d, got %d", v.expected_count, c)
 		}
+	}
+}
+
+func Benchmark_nodesAllocation(b *testing.B) {
+	b.StopTimer()
+
+	// building country name
+	// source from file
+	file, err := os.Open("/usr/share/dict/words")
+	words := make([]string, 0)
+	if err != nil {
+		b.Log("Cannot open expected file /usr/share/dict/words. Skipping this benchmark.")
+		b.SkipNow()
+		return
+	}
+	reader := bufio.NewReader(file)
+	for  {
+		line, err := reader.ReadString('\n');
+		if err == io.EOF {
+			break
+		}
+		words = append(words, line[:len(line)-1])
+	}
+
+	b.Logf("Inserting %d words in the trie", b.N)
+
+	rootTrie := NewTrie()
+
+	b.ResetTimer()
+	b.StartTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		rootTrie.AppendWord(words[i % len(words)])
 	}
 }
 
