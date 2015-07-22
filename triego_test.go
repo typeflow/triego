@@ -234,6 +234,47 @@ func Benchmark_nodesAllocation(b *testing.B) {
 	}
 }
 
+func Benchmark_wordFind(b *testing.B) {
+	b.StopTimer()
+
+	// building country name
+	// source from file
+	file, err := os.Open("/usr/share/dict/words")
+	words := make([]string, 0)
+	if err != nil {
+		b.Log("Cannot open expected file /usr/share/dict/words. Skipping this benchmark.")
+		b.SkipNow()
+		return
+	}
+	reader := bufio.NewReader(file)
+	for  {
+		line, err := reader.ReadString('\n');
+		if err == io.EOF {
+			break
+		}
+		words = append(words, line[:len(line)-1])
+	}
+
+	b.Logf("Inserting %d words in the trie", b.N)
+
+	rootTrie := NewTrie()
+
+	for i := 0; i < b.N; i++ {
+		rootTrie.AppendWord(words[i % len(words)])
+	}
+
+	b.ResetTimer()
+	b.StartTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		found := rootTrie.HasWord(words[i % len(words)])
+		if found != true {
+			b.Errorf("Unexpected: couldn't find word '%s'", words[i % len(words)])
+		}
+	}
+}
+
 /*
  * A few helper functions
  */
