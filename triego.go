@@ -25,6 +25,22 @@ type TriePtr *Trie
 
 type TrieNodeIteratorCallback func(node *TrieNode, halt *bool)
 
+type PrefixInfo struct {
+	Prefix		  string
+	IsWord		  bool
+	Depth		  int
+
+	// SharedLength gives
+	// information about how
+	// much length is shared with
+	// the previous prefix,
+	// aka, how many characters
+	// of the previous prefix are shared
+	// with the current one
+	SharedLength  int
+}
+type PrefixIteratorCallback   func(PrefixInfo) (skip_subtree, halt bool)
+
 // Initializes a new trie
 func NewTrie() (t *Trie) {
 	t = new(Trie)
@@ -404,6 +420,63 @@ func (t *Trie) EachNode(callback TrieNodeIteratorCallback) {
 
 		if stop == true {
 			return
+		}
+
+		for _, c := range node.Children {
+			stack.Push(unsafe.Pointer(c))
+		}
+	}
+}
+
+// Iterates for each prefix in the
+// radix tree calling the given callback.
+// The given callback can be used to
+// guide the tree traversal.
+func (t *Trie) EachPrefix(callback PrefixIteratorCallback) {
+	stack  := stackgo.NewStack()
+	prefix := []rune{}
+
+	skipsubtree		  := false
+	halt     		  := false
+	added_lengths     := stackgo.NewStack()
+	last_depth        := t.depth
+
+	stack.Push(unsafe.Pointer(t))
+	for stack.Size() != 0 {
+		node := TriePtr(stack.Pop().(unsafe.Pointer))
+		if !node.isRoot {
+			// if we are now going up
+			// in the radix (e.g. we have
+			// finished with the current branch)
+			// then we adjust the current prefix
+			if last_depth >= node.depth {
+				var length = 0
+				for i := 0; i < (last_depth - node.depth) + 1; i++ {
+					length += added_lengths.Pop().(int)
+				}
+				prefix = prefix[:len(prefix) - length]
+			}
+			last_depth = node.depth
+			shared_length := len(prefix)
+			prefix = append(prefix, node.chars...)
+			added_lengths.Push(len(node.chars))
+
+			// building the info
+			// data to pass to the callback
+			info := PrefixInfo{
+				string(prefix),
+				node.IsWord,
+				node.depth,
+				shared_length,
+			}
+
+			skipsubtree, halt = callback(info)
+			if halt {
+				return
+			}
+			if skipsubtree {
+				continue
+			}
 		}
 
 		for _, c := range node.Children {

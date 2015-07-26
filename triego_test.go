@@ -69,6 +69,12 @@ var node_tests = []node_test{
 		"rubicundus",
 	}, 14,
 	},
+	node_test{[]string{
+		"arma",
+		"armatura",
+		"armento",
+	}, 5,
+	},
 }
 
 func Test_trieNodeCount(t* testing.T) {
@@ -265,6 +271,54 @@ func Test_Words(t *testing.T) {
 		if t.Failed() {
 			printTrie(trie)
 			t.Log(trie.Words())
+		}
+	}
+}
+
+type prefix_test_t struct {
+	input_prefixes    []string
+	expected_prefixes map[string]bool
+}
+
+var prefix_tests = []prefix_test_t{
+	{
+		[]string{ "arma", "armatura", "armento" },
+		map[string]bool{
+			"arm": false,
+			"arma": true,
+			"armatura": true,
+			"armento": true,
+		},
+	},
+}
+
+func Test_EachPrefix(t *testing.T) {
+	for _, tc := range prefix_tests {
+		radix := NewTrie()
+		for _, w := range tc.input_prefixes {
+			radix.AppendWord(w)
+		}
+
+		var prefixes []string
+		radix.EachPrefix(func (info PrefixInfo) (skip_subtree, halt bool) {
+			v, ok := tc.expected_prefixes[info.Prefix]
+			if ok == false || v != info.IsWord {
+				t.Errorf(`Unexpected condition:
+				For prefix '%s'
+				* prefix expected: %v
+				* prefix is word == (expected: %v, got: %v)
+				`, info.Prefix, ok, v, info.IsWord)
+				return false, false
+			}
+
+			if ok {
+				prefixes = append(prefixes, info.Prefix)
+			}
+			return false, false
+		})
+
+		if len(prefixes) != len(tc.expected_prefixes) {
+			t.Errorf("Unexpected count of prefixes: got %d, expected %d", len(prefixes), len(tc.expected_prefixes))
 		}
 	}
 }
