@@ -433,7 +433,7 @@ func (t *Trie) EachNode(callback TrieNodeIteratorCallback) {
 // The given callback can be used to
 // guide the tree traversal.
 func (t *Trie) EachPrefix(callback PrefixIteratorCallback) {
-	stack  := stackgo.NewStack()
+	stack  := NewStack()
 	prefix := []rune{}
 
 	skipsubtree		  := false
@@ -441,9 +441,9 @@ func (t *Trie) EachPrefix(callback PrefixIteratorCallback) {
 	added_lengths     := stackgo.NewStack()
 	last_depth        := t.depth
 
-	stack.Push(unsafe.Pointer(t))
+	stack.Push(t)
 	for stack.Size() != 0 {
-		node := TriePtr(stack.Pop().(unsafe.Pointer))
+		node := TriePtr(stack.Pop())
 		if !node.isRoot {
 			// if we are now going up
 			// in the radix (e.g. we have
@@ -479,8 +479,6 @@ func (t *Trie) EachPrefix(callback PrefixIteratorCallback) {
 			}
 		}
 
-		for _, c := range node.Children {
-			stack.Push(unsafe.Pointer(c))
-		}
+		stack.Push(node.Children...)
 	}
 }
