@@ -3,7 +3,6 @@ package triego
 
 import (
 	"github.com/alediaferia/stackgo"
-	"unsafe"
 	"strings"
 )
 
@@ -23,8 +22,6 @@ type Trie struct {
 type TrieNode Trie
 type TriePtr *Trie
 
-type TrieNodeIteratorCallback func(node *TrieNode, halt *bool)
-
 type PrefixInfo struct {
 	Prefix		  string
 	IsWord		  bool
@@ -39,9 +36,17 @@ type PrefixInfo struct {
 	// with the current one
 	SharedLength  int
 }
+
+// This call back is used by EachPrefix function
+// and called for every prefix in the radix tree.
+// Returning true for the skip_subtree value
+// makes the algorithm skip the entire subtree that
+// is about to explore. This feature
+// can enable very fast tree iterations despite the
+// DFS nature of the traversal.
 type PrefixIteratorCallback   func(PrefixInfo) (skip_subtree, halt bool)
 
-// Initializes a new trie
+// Initializes a new radix tree
 func NewTrie() (t *Trie) {
 	t = new(Trie)
 	t.IsWord = false
@@ -54,7 +59,7 @@ func NewTrie() (t *Trie) {
 	return
 }
 
-// Returns true if this trie is root
+// Returns true if this radix tree node is root
 func (t *Trie) IsRoot() bool {
 	return t.isRoot
 }
@@ -64,7 +69,7 @@ func (t *TrieNode) IsRoot() bool {
 }
 
 // Returns the depth of the
-// node within the whole trie
+// node within the whole radix tree
 // it belongs to
 func (t *TrieNode) Depth() int {
 	return t.depth
@@ -73,6 +78,10 @@ func (t *TrieNode) Depth() int {
 // Appends a word to the trie
 // This is a recursive function, so not that
 // efficient.
+// The algorithm follows the
+// BFS traversal principles implemented
+// iteratively. Given suffix is treated
+// as a full word.
 func (t *Trie) AppendWord(word string) {
 	t.append_radix([]rune(word))
 }
@@ -115,12 +124,6 @@ func (t *Trie) delete_child(name string) {
 	}
 }
 
-// Appends the given suffix to
-// the current radix.
-// The algorithm follows the
-// BFS traversal principles implemented
-// iteratively. Given suffix is treated
-// as a full word.
 func (t *Trie) append_radix(suffix []rune) {
 	cn        		 := t
 	current_children := []*Trie{}
@@ -264,7 +267,7 @@ next:
 }
 
 // Returns true if the word is found
-// in the trie
+// in the radix tree
 func (t *Trie) HasWord(word string) bool {
 	suffix           := []rune(word)
 	cn        		 := t
@@ -367,11 +370,11 @@ next:
 }
 
 // Returns a list with all the
-// words present in the trie
+// words present in the radix tree
 func (t *Trie) Words() (words []string) {
 	// DFS-based implementation for returning
 	// all the words in the trie
-	stack := stackgo.NewStack()
+	stack := NewStack()
 
 	words = make([]string, 0)
 	word := make([]rune, 0)
@@ -379,9 +382,9 @@ func (t *Trie) Words() (words []string) {
 	last_depth := 0
 	last_append_size := 0
 
-	stack.Push(unsafe.Pointer(t))
+	stack.Push(t)
 	for stack.Size() > 0 {
-		node := TriePtr(stack.Pop().(unsafe.Pointer))
+		node := TriePtr(stack.Pop())
 
 		if !node.isRoot {
 			if node.depth <= last_depth {
@@ -395,9 +398,7 @@ func (t *Trie) Words() (words []string) {
 			}
 		}
 
-		for _, c := range node.Children {
-			stack.Push(unsafe.Pointer(c))
-		}
+		stack.Push(node.Children...)
 		last_depth = node.depth
 		last_append_size = len(node.chars)
 	}
@@ -405,33 +406,16 @@ func (t *Trie) Words() (words []string) {
 	return
 }
 
-func (t *Trie) EachNode(callback TrieNodeIteratorCallback) {
-	// still a DFS-based implementation
-	stack := stackgo.NewStack()
-	node := t
-
-	stack.Push(unsafe.Pointer(node))
-
-	stop := false
-	for stack.Size() > 0 {
-		node = TriePtr(stack.Pop().(unsafe.Pointer))
-
-		callback((*TrieNode)(node), &stop)
-
-		if stop == true {
-			return
-		}
-
-		for _, c := range node.Children {
-			stack.Push(unsafe.Pointer(c))
-		}
-	}
-}
-
 // Iterates for each prefix in the
 // radix tree calling the given callback.
 // The given callback can be used to
 // guide the tree traversal.
+// The traversal is based on a DFS implementation
+// backed by a stack to handle the nodes to iterate
+// to. A special implementation of the stack
+// allows for a O(1) push for all the node children at once
+// keeping the whole traversal MAX(O(N)) where N is the
+// number of nodes.
 func (t *Trie) EachPrefix(callback PrefixIteratorCallback) {
 	stack  := NewStack()
 	prefix := []rune{}
