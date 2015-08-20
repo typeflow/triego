@@ -2,171 +2,140 @@ package triego
 
 import (
 	"testing"
-	/*"fmt"*/
 	"os"
-	"bufio"
 	"io"
+	"bufio"
+	"fmt"
 )
+
+type word_test1 struct {
+	w string // the word
+	e bool	 // if we expect the word in the trie or not
+}
+
+var word_tests1 = []word_test1{
+	{"cat", true},
+	{"doggy", true},
+	{"dog", true},
+	{"foo", false},
+	{"can", false},
+	{"c", false},
+	{"cattelan", true},
+}
 
 func Test_trieFindsWords(t *testing.T) {
 	rootTrie := NewTrie()
 
-	// manually appending two short
-	// words to make sure test is
-	// exclusively run against
-	// the find function
-	//
-	// words added: cat, dog
-
-	// dog
-	tr := NewTrie()
-	tr.isRoot = false
-	tr.Parent = rootTrie
-	tr.C = 'd'
-
-	rootTrie.Children['d'] = tr
-
-	tr1 := NewTrie()
-	tr1.isRoot = false
-	tr1.Parent = tr
-	tr1.C = 'o'
-	tr.Children['o'] = tr1
-
-	tr2 := NewTrie()
-	tr2.isRoot = false
-	tr2.Parent = tr1
-	tr2.C = 'g'
-	tr2.IsWord = true
-	tr1.Children['g'] = tr2
-
-	// cat
-	tr3 := NewTrie()
-	tr3.isRoot = false
-	tr3.Parent = rootTrie
-	tr3.C = 'c'
-
-	rootTrie.Children['c'] = tr3
-
-	tr4 := NewTrie()
-	tr4.isRoot = false
-	tr4.Parent = tr3
-	tr4.C = 'a'
-	tr3.Children['a'] = tr4
-
-	tr5 := NewTrie()
-	tr5.isRoot = false
-	tr5.Parent = tr4
-	tr5.C = 't'
-	tr5.IsWord = true
-	tr4.Children['t'] = tr5
-
-	if rootTrie.HasWord("dog") == false {
-		t.Errorf("Finding word 'dog' in trie fails")
-	}
-
-	if rootTrie.HasWord("cat") == false {
-		t.Errorf("Finding word 'cat' in trie fails")
-	}
-
-	if rootTrie.HasWord("foo") == true {
-		t.Errorf("Finding word 'foo' in trie unexpectedly succeeds")
-	}
-
-	var i int = 0
-	countTries(rootTrie, &i)
-	if i != 7 {
-		t.Fatalf("Expected 7 nodes, got %d", i)
+	for _, n := range word_tests1 {
+		if n.e == true {
+			rootTrie.AppendWord(n.w)
+		}
+		if has := rootTrie.HasWord(n.w); has != n.e {
+			t.Errorf("Unexpected HasWord result for word '%s': got %v, expected %v", n.w, has, n.e)
+			printTrie(rootTrie)
+		}
 	}
 }
 
 /*
  * A utility function to make sure
- * node append workd properly for our trie
+ * node append works properly for our trie
  */
-func countTries(trie *Trie, i *int) {
+func count_nodes(trie *Trie, i *int) {
 	if len(trie.Children) == 0 {
 		*i = *i + 1
 		return
 	}
 	for _, v := range trie.Children {
-		countTries(v, i)
+		count_nodes(v, i)
 	}
 
 	*i = *i + 1
 }
 
-type word_test struct {
-	w string
-	out bool
+type node_test struct {
+	words []string
+	nodes int
 }
 
-var testWords = []word_test{
-	{"testWord1", true},
-	{"testWord2", true},
-	{"nonExisting", false},
+var node_tests = []node_test{
+	node_test{[]string{
+		"romane",
+		"romanus",
+		"romulus",
+		"rubens",
+		"ruber",
+		"rubicon",
+		"rubicundus",
+	}, 14,
+	},
+	node_test{[]string{
+		"arma",
+		"armatura",
+		"armento",
+	}, 5,
+	},
 }
 
-func Test_trieAppendsWords(t *testing.T) {
-	rootTrie := NewTrie()
+func Test_trieNodeCount(t* testing.T) {
+	for _, v := range node_tests {
+		root_trie := NewTrie()
+		// appending nodes
+		for _, w := range v.words {
+			root_trie.AppendWord(w)
+		}
 
-	for _, v := range testWords {
-		if v.out == true {
-			rootTrie.AppendWord(v.w)
+		var count int = 0
+		count_nodes(root_trie, &count)
+		if count != v.nodes {
+			t.Errorf("Unexpected node count: got %d, expected %d", count, v.nodes)
+			printTrie(root_trie)
 		}
 	}
+}
 
-	for _, v := range testWords {
-		if rootTrie.HasWord(v.w) != v.out {
-			t.Errorf("Finding word '%s' in trie fails", v.w)
+type prefixes_test struct {
+	words []string
+	query string
+	expected_prefixes []string
+}
+
+var prefixes_tests = []prefixes_test {
+	{
+		[]string{"dom", "domato", "domatore", "domenica", "domani"},
+		"domat",
+		[]string{"domato", "domatore"},
+	},
+}
+
+func Test_trieClosestWords(t *testing.T) {
+	for _, v := range prefixes_tests {
+		trie := NewTrie()
+		for _, w := range v.words {
+			trie.AppendWord(w)
 		}
-	}
 
-	var i int = 0
-	countTries(rootTrie, &i)
-	if i != 11 {
-		t.Fatalf("Expected 11 nodes, got %d", i)
-	}
+		prefixes := trie.ClosestWords(v.query)
+		if len(prefixes) != len(v.expected_prefixes) {
+			printTrie(trie)
+			t.Errorf("Unexpected: expected prefixes length: %d, got: %d", len(v.expected_prefixes), len(prefixes))
+		}
 
-	words := rootTrie.Words()
-	for _, word := range words {
-		found := false
-		for _, v := range testWords {
-			if word == v.w && v.out == true {
-				found = true
-				break
+		for i := 0; i < len(v.expected_prefixes); i++ {
+			found := false
+			for j := 0; j < len(prefixes); j++ {
+				if v.expected_prefixes[i] == prefixes[j] {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Unexpected: couldn't find expected prefix '%s'", v.expected_prefixes[i])
 			}
 		}
-
-		if !found {
-			t.Fatalf("Cannot find expected words in the list of words in the trie: '%s'", word)
-		}
-	}
-}
-
-func Test_heavyHasWords(t *testing.T) {
-	rootTrie := NewTrie()
-
-	for _, v := range country_names {
-		rootTrie.AppendWord(v)
-		if !rootTrie.HasWord(v) {
-			t.Errorf("Cannot find appended word %s", v)
-		}
-	}
-
-	words := rootTrie.Words()
-	for _, w := range country_names {
-		found := false
-		for _, word := range words {
-			if w == word {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Logf("Cannot find word %s in trie", w)
-			t.Log("Trie is:")
-			t.Log(words)
-			t.FailNow()
+		if t.Failed() {
+			t.Log(prefixes)
+			printTrie(trie)
 		}
 	}
 }
@@ -174,30 +143,6 @@ func Test_heavyHasWords(t *testing.T) {
 type node_count_test struct {
 	words          []string
     expected_count int
-}
-
-var node_count_tests = []node_count_test{
-    { []string{ "a", "aaa", "bb", "bbb"}, 7},
-    { []string{ "trie", "triego", "git"}, 10},
-}
-
-func Test_iteratesEachNode(t *testing.T) {
-
-	for _, v := range node_count_tests {
-		rootTrie := NewTrie()
-		for _, word := range v.words {
-			rootTrie.AppendWord(word)
-		}
-
-		buffer := make([]rune, 0, 21)
-		rootTrie.EachNode(func(node *TrieNode, halt *bool) {
-			buffer = append(buffer, node.Character())
-		})
-
-		if c := len(buffer); c != v.expected_count {
-			t.Fatalf("Unexpected number of nodes: expected %d, got %d", v.expected_count, c)
-		}
-	}
 }
 
 func Benchmark_nodesAllocation(b *testing.B) {
@@ -247,16 +192,13 @@ func Benchmark_wordFind(b *testing.B) {
 		return
 	}
 	reader := bufio.NewReader(file)
-	for  {
+	for {
 		line, err := reader.ReadString('\n');
 		if err == io.EOF {
 			break
 		}
 		words = append(words, line[:len(line)-1])
 	}
-
-	b.Logf("Inserting %d words in the trie", b.N)
-
 	rootTrie := NewTrie()
 
 	for i := 0; i < b.N; i++ {
@@ -265,12 +207,11 @@ func Benchmark_wordFind(b *testing.B) {
 
 	b.ResetTimer()
 	b.StartTimer()
-	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
 		found := rootTrie.HasWord(words[i % len(words)])
 		if found != true {
-			b.Errorf("Unexpected: couldn't find word '%s'", words[i % len(words)])
+			b.Fatalf("Unexpected: couldn't find word '%s'", words[i % len(words)])
 		}
 	}
 }
@@ -278,18 +219,106 @@ func Benchmark_wordFind(b *testing.B) {
 /*
  * A few helper functions
  */
-/*func printTrie(trie *Trie) {
-	for _, v := range trie.Children {
-		runes := make([]rune, 0)
-		printTrie_(v, append(runes, v.C))
+func printTrie(trie *Trie) {
+	q := new_queue()
+	last_depth := trie.depth
+
+	q.enqueue(trie)
+	for !q.is_empty() {
+		n := q.dequeue()
+		if n.isRoot {
+			fmt.Print("/")
+		} else {
+			if n.depth > last_depth {
+				fmt.Println()
+			}
+			fmt.Printf("(%s,%v,%d)\t", string(n.chars), n.IsWord, n.depth)
+		}
+		for _, c := range n.Children {
+			q.enqueue(c)
+		}
+		last_depth = n.depth
+	}
+	fmt.Println()
+}
+
+type words_test struct {
+	words []string
+}
+
+var words_tests = []words_test{
+	{[]string{"a", "aaa", "abc", "zoro", "hephaestus"}},
+}
+
+func Test_Words(t *testing.T) {
+	for _, v := range words_tests {
+		trie := NewTrie()
+		trie.AppendWords(v.words...)
+
+		for _, w := range v.words {
+			found := false
+			for _, ws := range trie.Words() {
+				if ws == w {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("Unable to find word '%s'", w)
+			}
+		}
+		// debug
+		if t.Failed() {
+			printTrie(trie)
+			t.Log(trie.Words())
+		}
 	}
 }
 
-func printTrie_(trie *Trie, runes []rune) {
-	for _,v := range trie.Children {
-		if v.IsWord {
-			fmt.Println(string(append(runes, v.C)))
+type prefix_test_t struct {
+	input_prefixes    []string
+	expected_prefixes map[string]bool
+}
+
+var prefix_tests = []prefix_test_t{
+	{
+		[]string{ "arma", "armatura", "armento" },
+		map[string]bool{
+			"arm": false,
+			"arma": true,
+			"armatura": true,
+			"armento": true,
+		},
+	},
+}
+
+func Test_EachPrefix(t *testing.T) {
+	for _, tc := range prefix_tests {
+		radix := NewTrie()
+		for _, w := range tc.input_prefixes {
+			radix.AppendWord(w)
 		}
-		printTrie_(v, append(runes, v.C))
+
+		var prefixes []string
+		radix.EachPrefix(func (info PrefixInfo) (skip_subtree, halt bool) {
+			v, ok := tc.expected_prefixes[info.Prefix]
+			if ok == false || v != info.IsWord {
+				t.Errorf(`Unexpected condition:
+				For prefix '%s'
+				* prefix expected: %v
+				* prefix is word == (expected: %v, got: %v)
+				`, info.Prefix, ok, v, info.IsWord)
+				return false, false
+			}
+
+			if ok {
+				prefixes = append(prefixes, info.Prefix)
+			}
+			return false, false
+		})
+
+		if len(prefixes) != len(tc.expected_prefixes) {
+			t.Errorf("Unexpected count of prefixes: got %d, expected %d", len(prefixes), len(tc.expected_prefixes))
+		}
 	}
-}*/
+}
