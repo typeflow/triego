@@ -1,16 +1,16 @@
 package triego
 
 import (
-	"testing"
-	"os"
-	"io"
 	"bufio"
 	"fmt"
+	"io"
+	"os"
+	"testing"
 )
 
 type word_test1 struct {
 	w string // the word
-	e bool	 // if we expect the word in the trie or not
+	e bool   // if we expect the word in the trie or not
 }
 
 var word_tests1 = []word_test1{
@@ -77,7 +77,7 @@ var node_tests = []node_test{
 	},
 }
 
-func Test_trieNodeCount(t* testing.T) {
+func Test_trieNodeCount(t *testing.T) {
 	for _, v := range node_tests {
 		root_trie := NewTrie()
 		// appending nodes
@@ -95,16 +95,21 @@ func Test_trieNodeCount(t* testing.T) {
 }
 
 type prefixes_test struct {
-	words []string
-	query string
+	words             []string
+	query             string
 	expected_prefixes []string
 }
 
-var prefixes_tests = []prefixes_test {
+var prefixes_tests = []prefixes_test{
 	{
 		[]string{"dom", "domato", "domatore", "domenica", "domani"},
 		"domat",
 		[]string{"domato", "domatore"},
+	},
+	{
+		[]string{"dopo domani", "domenica"},
+		"domani",
+		[]string{"dopo domani"},
 	},
 }
 
@@ -115,7 +120,7 @@ func Test_trieClosestWords(t *testing.T) {
 			trie.AppendWord(w)
 		}
 
-		prefixes := trie.ClosestWords(v.query)
+		prefixes := trie.ClosestWords(v.query) // []interface{} which are actually strings
 		if len(prefixes) != len(v.expected_prefixes) {
 			printTrie(trie)
 			t.Errorf("Unexpected: expected prefixes length: %d, got: %d", len(v.expected_prefixes), len(prefixes))
@@ -124,7 +129,7 @@ func Test_trieClosestWords(t *testing.T) {
 		for i := 0; i < len(v.expected_prefixes); i++ {
 			found := false
 			for j := 0; j < len(prefixes); j++ {
-				if v.expected_prefixes[i] == prefixes[j] {
+				if v.expected_prefixes[i] == prefixes[j].(string) {
 					found = true
 					break
 				}
@@ -134,7 +139,9 @@ func Test_trieClosestWords(t *testing.T) {
 			}
 		}
 		if t.Failed() {
-			t.Log(prefixes)
+			for _, p := range prefixes {
+				t.Log(string(p.([]rune)))
+			}
 			printTrie(trie)
 		}
 	}
@@ -142,7 +149,7 @@ func Test_trieClosestWords(t *testing.T) {
 
 type node_count_test struct {
 	words          []string
-    expected_count int
+	expected_count int
 }
 
 func Benchmark_nodesAllocation(b *testing.B) {
@@ -158,8 +165,8 @@ func Benchmark_nodesAllocation(b *testing.B) {
 		return
 	}
 	reader := bufio.NewReader(file)
-	for  {
-		line, err := reader.ReadString('\n');
+	for {
+		line, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
 		}
@@ -175,7 +182,7 @@ func Benchmark_nodesAllocation(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		rootTrie.AppendWord(words[i % len(words)])
+		rootTrie.AppendWord(words[i%len(words)])
 	}
 }
 
@@ -193,7 +200,7 @@ func Benchmark_wordFind(b *testing.B) {
 	}
 	reader := bufio.NewReader(file)
 	for {
-		line, err := reader.ReadString('\n');
+		line, err := reader.ReadString('\n')
 		if err == io.EOF {
 			break
 		}
@@ -202,16 +209,16 @@ func Benchmark_wordFind(b *testing.B) {
 	rootTrie := NewTrie()
 
 	for i := 0; i < b.N; i++ {
-		rootTrie.AppendWord(words[i % len(words)])
+		rootTrie.AppendWord(words[i%len(words)])
 	}
 
 	b.ResetTimer()
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		found := rootTrie.HasWord(words[i % len(words)])
+		found := rootTrie.HasWord(words[i%len(words)])
 		if found != true {
-			b.Fatalf("Unexpected: couldn't find word '%s'", words[i % len(words)])
+			b.Fatalf("Unexpected: couldn't find word '%s'", words[i%len(words)])
 		}
 	}
 }
@@ -282,12 +289,12 @@ type prefix_test_t struct {
 
 var prefix_tests = []prefix_test_t{
 	{
-		[]string{ "arma", "armatura", "armento" },
+		[]string{"arma", "armatura", "armento"},
 		map[string]bool{
-			"arm": false,
-			"arma": true,
+			"arm":      false,
+			"arma":     true,
 			"armatura": true,
-			"armento": true,
+			"armento":  true,
 		},
 	},
 }
@@ -300,7 +307,7 @@ func Test_EachPrefix(t *testing.T) {
 		}
 
 		var prefixes []string
-		radix.EachPrefix(func (info PrefixInfo) (skip_subtree, halt bool) {
+		radix.EachPrefix(func(info PrefixInfo) (skip_subtree, halt bool) {
 			v, ok := tc.expected_prefixes[info.Prefix]
 			if ok == false || v != info.IsWord {
 				t.Errorf(`Unexpected condition:
