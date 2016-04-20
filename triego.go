@@ -18,7 +18,7 @@ type Trie struct {
 	Children []*Trie
 	isRoot   bool
 	depth    int
-	data     interface{}
+	data     []string
 }
 
 type TrieNode Trie
@@ -37,6 +37,11 @@ type PrefixInfo struct {
 	// of the previous prefix are shared
 	// with the current one
 	SharedLength int
+
+	// if the node is a word (IsWord == true)
+	// this field contains the whole data
+	// associated with the node
+	Data []string
 }
 
 // This call back is used by EachPrefix function
@@ -57,7 +62,7 @@ func NewTrie() (t *Trie) {
 	t.isRoot = true
 	t.Children = make([]*Trie, 0)
 	t.depth = 0
-	t.data = nil
+	t.data = make([]string, 0, k_DEFAULT_ALLOC_SIZE)
 
 	return
 }
@@ -132,7 +137,7 @@ func (t *Trie) delete_child(name string) {
 
 // Inserts the given suffix in the trie associating
 // it with the given data
-func (t *Trie) append_radix(suffix []rune, data interface{}) {
+func (t *Trie) append_radix(suffix []rune, data string) {
 	cn := t
 	current_children := []*Trie{}
 	var last_node *Trie = nil
@@ -160,7 +165,7 @@ func (t *Trie) append_radix(suffix []rune, data interface{}) {
 			// and contains the specified data
 			if r == len(cn.chars)-1 && len(suffix) == len(cn.chars) {
 				cn.IsWord = true
-				cn.data = data
+				cn.data = append(cn.data, data)
 				return
 			}
 
@@ -213,7 +218,7 @@ func (t *Trie) append_radix(suffix []rune, data interface{}) {
 		t.Children = append(t.Children, new_)
 		new_.depth = t.depth + 1
 		new_.IsWord = true
-		new_.data = data
+		new_.data = append(new_.data, data)
 		return
 	}
 
@@ -280,7 +285,7 @@ func (t *Trie) append_radix(suffix []rune, data interface{}) {
 		sub2_c.chars = sub2
 		sub2_c.depth = last_node.depth + 1
 		sub2_c.Children = make([]*Trie, 0, 1)
-		sub2_c.data = data
+		sub2_c.data = append(sub2_c.data, data)
 		last_node.Children = append(last_node.Children, sub2_c)
 	}
 }
@@ -327,7 +332,7 @@ func (t *Trie) HasWord(word string) bool {
 
 // Returns an array of objects that are associated
 // with the words closest to the specified word param
-func (t *Trie) ClosestWords(word string) []interface{} {
+func (t *Trie) ClosestWords(word string) []string {
 	suffix := []rune(word)
 	cn := t
 	current_children := []*Trie{}
@@ -347,7 +352,7 @@ func (t *Trie) ClosestWords(word string) []interface{} {
 			// the corresponding data
 			if last == len(cn.chars)-1 && len(suffix) == len(cn.chars) {
 				if cn.IsWord {
-					return []interface{}{cn.data}
+					return cn.data
 				}
 			}
 
@@ -381,17 +386,17 @@ func (t *Trie) ClosestWords(word string) []interface{} {
 		return last_prefix_node.Words()
 	}
 
-	return []interface{}{}
+	return []string{}
 }
 
 // Returns a list with all the
 // words present in the radix tree
-func (t *Trie) Words() (words []interface{}) {
+func (t *Trie) Words() (words []string) {
 	// DFS-based implementation for returning
 	// all the words in the trie
 	stack := NewStack()
 
-	words = make([]interface{}, 0)
+	words = make([]string, 0)
 
 	stack.Push(t)
 	for stack.Size() > 0 {
@@ -399,7 +404,7 @@ func (t *Trie) Words() (words []interface{}) {
 
 		if !node.isRoot {
 			if node.IsWord {
-				words = append(words, node.data)
+				words = append(words, node.data...)
 			}
 		}
 
@@ -414,11 +419,7 @@ func (t *Trie) Words() (words []interface{}) {
 // The given callback can be used to
 // guide the tree traversal.
 // The traversal is based on a DFS implementation
-// backed by a stack to handle the nodes to iterate
-// to. A special implementation of the stack
-// allows for a O(1) push for all the node children at once
-// keeping the whole traversal MAX(O(N)) where N is the
-// number of nodes.
+// backed by a stack to handle the nodes to iterate to
 func (t *Trie) EachPrefix(callback PrefixIteratorCallback) {
 	stack := NewStack()
 	prefix := []rune{}
@@ -455,6 +456,7 @@ func (t *Trie) EachPrefix(callback PrefixIteratorCallback) {
 				node.IsWord,
 				node.depth,
 				shared_length,
+				node.data,
 			}
 
 			skipsubtree, halt = callback(info)

@@ -111,6 +111,21 @@ var prefixes_tests = []prefixes_test{
 		"domani",
 		[]string{"dopo domani"},
 	},
+	{
+		[]string{"united kingdom", "united states"},
+		"united",
+		[]string{"united kingdom", "united states"},
+	},
+	{
+		[]string{"united kingdom", "united states"},
+		"states",
+		[]string{"united states"},
+	},
+	{
+		[]string{"united arab emirates", "united states"},
+		"united",
+		[]string{"united states", "united arab emirates"},
+	},
 }
 
 func Test_trieClosestWords(t *testing.T) {
@@ -120,7 +135,7 @@ func Test_trieClosestWords(t *testing.T) {
 			trie.AppendWord(w)
 		}
 
-		prefixes := trie.ClosestWords(v.query) // []interface{} which are actually strings
+		prefixes := trie.ClosestWords(v.query) // []string{} which are actually strings
 		if len(prefixes) != len(v.expected_prefixes) {
 			printTrie(trie)
 			t.Errorf("Unexpected: expected prefixes length: %d, got: %d", len(v.expected_prefixes), len(prefixes))
@@ -129,7 +144,7 @@ func Test_trieClosestWords(t *testing.T) {
 		for i := 0; i < len(v.expected_prefixes); i++ {
 			found := false
 			for j := 0; j < len(prefixes); j++ {
-				if v.expected_prefixes[i] == prefixes[j].(string) {
+				if v.expected_prefixes[i] == prefixes[j] {
 					found = true
 					break
 				}
@@ -140,7 +155,7 @@ func Test_trieClosestWords(t *testing.T) {
 		}
 		if t.Failed() {
 			for _, p := range prefixes {
-				t.Log(string(p.([]rune)))
+				t.Log(p)
 			}
 			printTrie(trie)
 		}
@@ -284,19 +299,51 @@ func Test_Words(t *testing.T) {
 
 type prefix_test_t struct {
 	input_prefixes    []string
-	expected_prefixes map[string]bool
+	expected_prefixes map[string][]string
 }
 
 var prefix_tests = []prefix_test_t{
 	{
 		[]string{"arma", "armatura", "armento"},
-		map[string]bool{
-			"arm":      false,
-			"arma":     true,
-			"armatura": true,
-			"armento":  true,
+		map[string][]string{
+			"arm":      nil,
+			"arma":     []string{"arma"},
+			"armatura": []string{"armatura"},
+			"armento":  []string{"armento"},
 		},
 	},
+	{
+		[]string{"united states", "united arab emirates"},
+		map[string][]string{
+			"united":   []string{"united states", "united arab emirates"},
+			"arab":     []string{"united arab emirates"},
+			"emirates": []string{"united arab emirates"},
+			"states":   []string{"united states"},
+		},
+	},
+}
+
+func testEq(a, b []string) bool {
+
+	if a == nil && b == nil {
+		return true
+	}
+
+	if a == nil || b == nil {
+		return false
+	}
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func Test_EachPrefix(t *testing.T) {
@@ -309,12 +356,13 @@ func Test_EachPrefix(t *testing.T) {
 		var prefixes []string
 		radix.EachPrefix(func(info PrefixInfo) (skip_subtree, halt bool) {
 			v, ok := tc.expected_prefixes[info.Prefix]
-			if ok == false || v != info.IsWord {
-				t.Errorf(`Unexpected condition:
-				For prefix '%s'
-				* prefix expected: %v
-				* prefix is word == (expected: %v, got: %v)
-				`, info.Prefix, ok, v, info.IsWord)
+			if ok == false {
+				t.Errorf("Got unexpected prefix '%s'", info.Prefix)
+				return false, false
+			}
+
+			if testEq(v, info.Data) != true {
+				t.Errorf("Unexpected values: got %v, expected %v", info.Data, v)
 				return false, false
 			}
 
