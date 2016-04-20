@@ -1,4 +1,4 @@
-# Triego
+# Triego [![Build Status](https://travis-ci.org/typeflow/triego.svg?branch=master)](https://travis-ci.org/typeflow/triego)
 
 Despite the name the internal of this data structure is implemented
 using a [Radix Tree](https://en.wikipedia.org/wiki/Radix_tree). 
